@@ -1,0 +1,6 @@
+{
+  "recommendations": [
+    "imgildev.vscode-auto-barrel",
+    "dbaeumer.vscode-eslint"
+  ]
+}
