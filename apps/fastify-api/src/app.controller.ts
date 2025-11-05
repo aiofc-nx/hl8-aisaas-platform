@@ -2,6 +2,7 @@ import { Controller, Get } from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { Logger } from "@hl8/nestjs-fastify";
 import type { StructuredLogContext } from "@hl8/nestjs-fastify";
+import { AppConfig } from "./config/app.config.js";
 
 /**
  * 应用根控制器
@@ -13,7 +14,10 @@ import type { StructuredLogContext } from "@hl8/nestjs-fastify";
 export class AppController {
   private readonly logger: Logger;
 
-  constructor(logger: Logger) {
+  constructor(
+    logger: Logger,
+    private readonly config: AppConfig, // 注入配置服务
+  ) {
     // 创建子日志器，自动继承请求上下文
     this.logger = logger.child({
       module: "AppController",
@@ -102,10 +106,19 @@ export class AppController {
           type: "string",
           example: "development",
         },
+        port: {
+          type: "number",
+          example: 3000,
+        },
       },
     },
   })
-  getInfo(): { name: string; version: string; environment: string } {
+  getInfo(): {
+    name: string;
+    version: string;
+    environment: string;
+    port: number;
+  } {
     this.logger.log("获取应用信息请求", {
       business: {
         operation: "getInfo",
@@ -117,7 +130,8 @@ export class AppController {
     const result = {
       name: "Fastify API",
       version: "1.0.0",
-      environment: process.env.NODE_ENV || "development",
+      environment: this.config.NODE_ENV || "development",
+      port: this.config.PORT,
     };
 
     this.logger.log("应用信息获取完成", {

@@ -75,8 +75,10 @@ export const directoryLoader = (
   } = options;
 
   return (): Record<string, unknown> => {
+    // 如果目录不存在，返回空对象而不是抛出错误
+    // 这样可以让其他配置源（如远程配置、环境变量）作为 fallback
     if (!fs.existsSync(directory)) {
-      throw new Error(`Configuration directory not found: ${directory}`);
+      return {};
     }
 
     const config: Record<string, unknown> = {};
@@ -133,8 +135,10 @@ export const directoryLoader = (
  */
 
 function substituteEnvironmentVariables(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   config: any,
   disallowUndefined: boolean = true,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): any {
   if (typeof config === "string") {
     return config.replace(/\$\{([^}]+)\}/g, (match, key) => {

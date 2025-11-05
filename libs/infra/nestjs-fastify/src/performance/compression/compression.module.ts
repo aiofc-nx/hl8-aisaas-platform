@@ -64,12 +64,14 @@ export interface CompressionModuleAsyncOptions
    * 工厂函数，返回 Compression 配置
    */
   useFactory: (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ...args: any[]
   ) => CompressionOptions | Promise<CompressionOptions>;
 
   /**
    * 注入的依赖
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   inject?: any[];
 }
 

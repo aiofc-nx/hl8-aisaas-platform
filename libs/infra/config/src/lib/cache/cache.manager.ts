@@ -203,10 +203,12 @@ export class CacheManager {
    * @since 1.0.0
    */
   public async updateOptions(options: Partial<CacheOptions>): Promise<void> {
+    // 先保存旧策略，用于检查是否变化
+    const oldStrategy = this.options.strategy;
     this.options = { ...this.options, ...options };
 
     // 如果策略发生变化，重新初始化提供者
-    if (options.strategy && options.strategy !== this.options.strategy) {
+    if (options.strategy && options.strategy !== oldStrategy) {
       await this.initializeProvider();
     }
   }

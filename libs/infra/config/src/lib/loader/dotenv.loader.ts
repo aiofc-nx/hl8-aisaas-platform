@@ -7,6 +7,8 @@
 
 import * as dotenv from "dotenv";
 import * as dotenvExpand from "dotenv-expand";
+import * as fs from "fs";
+import * as path from "path";
 import { CONFIG_DEFAULTS } from "../constants.js";
 import { ConfigError, ErrorHandler } from "../errors/index.js";
 import { ConfigLoader } from "../interfaces/typed-config-module-options.interface.js";
@@ -49,30 +51,77 @@ export const dotenvLoader = (
     enableExpandVariables = true,
   } = options;
 
-  return (): ConfigRecord => {
+  return (_previousConfig: ConfigRecord = {}): ConfigRecord => {
     let config: ConfigRecord = {};
 
-    // 加载环境变量文件
+    // 智能加载策略：
+    // 1. 首先尝试加载配置文件（JSON/YAML）和远程配置源
+    // 2. 只有在无法获得其他配置源时，才加载 .env 文件作为 fallback
+    // 3. .env 文件不存在时静默忽略，不会报错（因为进程环境变量仍然可用）
+    // 注意：.env 文件可以作为可选的覆盖源，用于覆盖配置文件中的值
     if (!ignoreEnvFile && envFilePath) {
       try {
-        const result = dotenv.config({ path: envFilePath });
-        if (result.error) {
-          throw ErrorHandler.handleFileLoadError(
-            result.error,
-            Array.isArray(envFilePath) ? envFilePath.join(", ") : envFilePath,
-            { ignoreEnvFile, ignoreEnvVars },
-          );
+        // 处理多个文件路径的情况
+        const filePaths = Array.isArray(envFilePath)
+          ? envFilePath
+          : [envFilePath];
+
+        for (const filePath of filePaths) {
+          // 检查文件是否存在，如果不存在则跳过（.env 文件是可选的）
+          const resolvedPath = path.isAbsolute(filePath)
+            ? filePath
+            : path.resolve(process.cwd(), filePath);
+
+          if (!fs.existsSync(resolvedPath)) {
+            // 文件不存在是正常的，静默跳过
+            // 配置可以从其他来源（如配置文件、环境变量）加载
+            continue;
+          }
+
+          // 文件存在，尝试加载
+          const result = dotenv.config({
+            path: resolvedPath,
+          });
+
+          // 如果 result.error 存在，检查是否是文件不存在错误
+          if (result.error) {
+            const error = result.error as NodeJS.ErrnoException;
+            const isFileNotFound = error.code === "ENOENT";
+            if (isFileNotFound) {
+              // 文件不存在是正常的，静默忽略
+              continue;
+            } else {
+              // 其他错误（如权限错误、格式错误）应该抛出
+              throw ErrorHandler.handleFileLoadError(result.error, filePath, {
+                ignoreEnvFile,
+                ignoreEnvVars,
+              });
+            }
+          } else if (result.parsed) {
+            // 只有成功解析时才合并配置
+            config = { ...config, ...result.parsed };
+          }
         }
-        config = { ...config, ...result.parsed };
       } catch (error) {
         if (error instanceof ConfigError) {
           throw error;
         }
-        throw ErrorHandler.handleFileLoadError(
-          error as Error,
-          Array.isArray(envFilePath) ? envFilePath.join(", ") : envFilePath,
-          { ignoreEnvFile, ignoreEnvVars },
-        );
+
+        // 检查是否是文件不存在错误
+        const err = error as NodeJS.ErrnoException;
+        const isFileNotFound = err.code === "ENOENT";
+
+        if (isFileNotFound) {
+          // 文件不存在是正常的，静默忽略
+          // 配置可以从其他来源（如配置文件、环境变量）加载
+        } else {
+          // 其他错误应该抛出
+          throw ErrorHandler.handleFileLoadError(
+            error as Error,
+            Array.isArray(envFilePath) ? envFilePath.join(", ") : envFilePath,
+            { ignoreEnvFile, ignoreEnvVars },
+          );
+        }
       }
     }
 

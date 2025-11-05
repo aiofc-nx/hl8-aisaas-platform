@@ -68,11 +68,13 @@ export interface MetricsModuleAsyncOptions
   /**
    * 工厂函数，返回 Metrics 配置
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   useFactory: (...args: any[]) => MetricsOptions | Promise<MetricsOptions>;
 
   /**
    * 注入的依赖
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   inject?: any[];
 }
 

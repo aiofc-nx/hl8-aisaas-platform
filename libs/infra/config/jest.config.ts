@@ -22,5 +22,5 @@ export default {
   moduleFileExtensions: ["ts", "js"],
   coverageDirectory: "../../coverage/libs/config",
   testMatch: ["**/*.spec.ts"],
-  setupFilesAfterEnv: ["<rootDir>/../../jest.setup.js"],
+  setupFilesAfterEnv: ["<rootDir>/../../../jest.setup.js"],
 };

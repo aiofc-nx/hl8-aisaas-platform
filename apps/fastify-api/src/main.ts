@@ -17,23 +17,25 @@ import { setupSwagger } from "./swagger.js";
  * @returns {Promise<void>} A promise that resolves when the application has started.
  */
 const main = async (): Promise<void> => {
+  // 注意：在模块创建之前，无法使用 AppConfig 注入配置
+  // 这里使用 process.env 作为初始化配置，实际配置会在模块创建后通过 AppConfig 统一管理
+  // 这些值会被配置文件和环境变量覆盖（通过 dotenvLoader）
+  const nodeEnv = process.env.NODE_ENV || "development";
+  const logLevel = process.env.LOG_LEVEL || process.env.LOGGING__LEVEL || "info";
+  const isDevelopment = nodeEnv === "development";
+
   // 使用企业级 Fastify 适配器
   const adapter = new EnterpriseFastifyAdapter({
     // Fastify 基础配置
     fastifyOptions: {
       // 日志配置：FastifyLoggingModule 会在应用启动后接管并扩展日志功能
       // 这里只提供基础配置，详细配置（上下文注入、脱敏、性能监控等）在 app.module.ts 中
-      // 注意：如果 NODE_ENV 未设置，使用 createDevelopmentPinoConfig 确保美化输出
+      // 注意：实际配置会从 AppConfig 中读取，这里只是初始化配置
       logger: (() => {
-        const isDevelopment =
-          process.env.NODE_ENV === "development" || !process.env.NODE_ENV; // 默认开发环境
-        const level =
-          process.env.LOG_LEVEL || process.env.LOGGING__LEVEL || "info";
-
         if (isDevelopment) {
           // 开发环境：使用 pino-pretty 美化输出
           return createFastifyLoggerConfig({
-            level,
+            level: logLevel,
             prettyPrint: true,
             colorize: true,
             translateTime: "SYS:standard",
@@ -43,7 +45,7 @@ const main = async (): Promise<void> => {
 
         // 生产环境：JSON 格式
         return createFastifyLoggerConfig({
-          level,
+          level: logLevel,
           prettyPrint: false,
         });
       })(),
@@ -63,13 +65,16 @@ const main = async (): Promise<void> => {
     // 安全配置
     enableSecurity: true,
     // 限流（生产环境启用）
-    enableRateLimit: process.env.NODE_ENV === "production",
+    // 注意：实际配置应该从 AppConfig 中读取，但由于在模块创建前，这里使用环境变量
+    // 建议在应用启动后通过 AppConfig 获取配置并重新设置
+    enableRateLimit: nodeEnv === "production",
     rateLimitOptions: {
       timeWindow: 60000, // 1分钟
       max: 100, // 100次请求
     },
     // 熔断器（生产环境启用）
-    enableCircuitBreaker: process.env.NODE_ENV === "production",
+    // 注意：同上，实际配置应该从 AppConfig 中读取
+    enableCircuitBreaker: nodeEnv === "production",
   });
 
   const app = await NestFactory.create<NestFastifyApplication>(

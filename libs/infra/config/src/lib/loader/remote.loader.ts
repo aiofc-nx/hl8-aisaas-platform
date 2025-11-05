@@ -39,6 +39,7 @@ export interface RemoteLoaderOptions {
    * 使用 any 符合宪章 IX 允许场景：HTTP 响应类型未知。
    */
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   type?: "json" | "yaml" | "yml" | ((response: any) => string);
 
   /**
@@ -51,6 +52,7 @@ export interface RemoteLoaderOptions {
    * 使用 any 符合宪章 IX 允许场景：HTTP 响应和配置对象结构未知。
    */
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   mapResponse?: (response: any) => any;
 
   /**
@@ -63,6 +65,7 @@ export interface RemoteLoaderOptions {
    * 使用 any 符合宪章 IX 允许场景：HTTP 响应类型未知。
    */
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   shouldRetry?: (response: any) => boolean;
 
   /**

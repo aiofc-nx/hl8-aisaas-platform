@@ -25,7 +25,9 @@
  */
 
 export const forEachDeep = (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   obj: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   callback: (value: any, key: string, path: string) => void,
   path: string = "",
 ): void => {

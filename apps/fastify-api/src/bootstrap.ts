@@ -51,7 +51,7 @@ export const bootstrap = async (app: NestFastifyApplication): Promise<void> => {
 
   // 启动应用并监听配置的端口
   const port = appConfig.PORT;
-  const host = process.env.HOST || "0.0.0.0";
+  const host = appConfig.HOST;
 
   await app.listen(port, host);
 
@@ -66,7 +66,7 @@ export const bootstrap = async (app: NestFastifyApplication): Promise<void> => {
   console.log(`📚 API Docs:     http://${displayHost}:${port}/api-docs`);
   console.log(`📄 OpenAPI JSON: http://${displayHost}:${port}/api-docs-json`);
   console.log("=".repeat(70));
-  console.log(`✅ Environment:  ${process.env.NODE_ENV || "development"}`);
+  console.log(`✅ Environment:  ${appConfig.NODE_ENV}`);
   console.log(`⚡ Powered by:   Fastify + NestJS`);
   console.log("=".repeat(70) + "\n");
 };

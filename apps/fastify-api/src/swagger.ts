@@ -19,6 +19,7 @@
 
 import { NestFastifyApplication } from "@nestjs/platform-fastify";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import { AppConfig } from "./config/app.config.js";
 
 /**
  * 设置 Swagger API 文档
@@ -44,9 +45,12 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 export const setupSwagger = async (
   app: NestFastifyApplication,
 ): Promise<void> => {
-  // 生产环境可选择性禁用 Swagger
-  if (process.env.SWAGGER_ENABLED === "false") {
-    console.log("📚 Swagger is disabled in production");
+  // 获取配置
+  const appConfig = app.get(AppConfig);
+
+  // 检查是否启用 Swagger
+  if (!appConfig.swagger.enabled) {
+    console.log("📚 Swagger is disabled");
     return;
   }
 
@@ -88,18 +92,9 @@ export const setupSwagger = async (
     .addTag("用户管理", "用户 CRUD 操作")
     .addTag("租户管理", "租户配置和管理")
     .addTag("组织管理", "组织架构管理")
-    .addServer(
-      process.env.API_SERVER_URL || "http://localhost:3001",
-      "Development Server",
-    )
-    .addServer(
-      process.env.API_STAGING_URL || "https://staging-api.hl8.com",
-      "Staging Server",
-    )
-    .addServer(
-      process.env.API_PRODUCTION_URL || "https://api.hl8.com",
-      "Production Server",
-    )
+    .addServer(appConfig.swagger.serverUrl, "Development Server")
+    .addServer(appConfig.swagger.stagingUrl, "Staging Server")
+    .addServer(appConfig.swagger.productionUrl, "Production Server")
     .build();
 
   const document = SwaggerModule.createDocument(app, config, {
@@ -127,9 +122,9 @@ export const setupSwagger = async (
 
   console.log("📚 Swagger documentation is available at:");
   console.log(
-    `   📖 UI: http://localhost:${process.env.PORT || 3001}/api-docs`,
+    `   📖 UI: http://localhost:${appConfig.PORT}/api-docs`,
   );
   console.log(
-    `   📄 JSON: http://localhost:${process.env.PORT || 3001}/api-docs-json`,
+    `   📄 JSON: http://localhost:${appConfig.PORT}/api-docs-json`,
   );
 };

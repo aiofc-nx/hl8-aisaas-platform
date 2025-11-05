@@ -48,10 +48,12 @@
 
 import { Type } from "class-transformer";
 import {
+  IsBoolean,
   IsIn,
   IsNumber,
   IsOptional,
   IsString,
+  IsUrl,
   ValidateNested,
 } from "class-validator";
 
@@ -61,6 +63,53 @@ import {
   MetricsModuleConfig,
   RateLimitModuleConfig,
 } from "@hl8/nestjs-fastify";
+
+/**
+ * Swagger 配置
+ *
+ * @description Swagger API 文档相关配置
+ */
+export class SwaggerConfig {
+  /**
+   * 是否启用 Swagger
+   *
+   * @default true
+   */
+  @IsBoolean()
+  @Type(() => Boolean)
+  @IsOptional()
+  public readonly enabled: boolean = true;
+
+  /**
+   * API 服务器 URL（开发环境）
+   *
+   * @default 'http://localhost:3001'
+   */
+  @IsString()
+  @IsUrl({ require_protocol: false, require_tld: false })
+  @IsOptional()
+  public readonly serverUrl: string = "http://localhost:3001";
+
+  /**
+   * API 服务器 URL（预发布环境）
+   *
+   * @default 'https://staging-api.hl8.com'
+   */
+  @IsString()
+  @IsUrl({ require_protocol: true })
+  @IsOptional()
+  public readonly stagingUrl: string = "https://staging-api.hl8.com";
+
+  /**
+   * API 服务器 URL（生产环境）
+   *
+   * @default 'https://api.hl8.com'
+   */
+  @IsString()
+  @IsUrl({ require_protocol: true })
+  @IsOptional()
+  public readonly productionUrl: string = "https://api.hl8.com";
+}
 
 /**
  * 应用配置
@@ -87,6 +136,26 @@ export class AppConfig {
   @Type(() => Number)
   @IsOptional()
   public readonly PORT: number = 3000;
+
+  /**
+   * 应用主机地址
+   *
+   * @default '0.0.0.0'
+   */
+  @IsString()
+  @IsOptional()
+  public readonly HOST: string = "0.0.0.0";
+
+  /**
+   * 日志级别（用于 Fastify 初始化）
+   *
+   * @description 兼容 LOG_LEVEL 和 LOGGING__LEVEL
+   * @default 'info'
+   */
+  @IsString()
+  @IsIn(["fatal", "error", "warn", "info", "debug", "trace"])
+  @IsOptional()
+  public readonly LOG_LEVEL?: string;
 
   /**
    * 日志配置
@@ -118,4 +187,14 @@ export class AppConfig {
   @Type(() => RateLimitModuleConfig)
   @IsOptional()
   public readonly rateLimit?: RateLimitModuleConfig;
+
+  /**
+   * Swagger 配置
+   *
+   * @description Swagger API 文档配置
+   */
+  @ValidateNested()
+  @Type(() => SwaggerConfig)
+  @IsOptional()
+  public readonly swagger: SwaggerConfig = new SwaggerConfig();
 }

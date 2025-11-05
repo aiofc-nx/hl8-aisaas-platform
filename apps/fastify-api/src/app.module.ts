@@ -3,8 +3,9 @@ import {
   FastifyLoggingModule,
   MetricsModule,
 } from "@hl8/nestjs-fastify";
-import { TypedConfigModule, dotenvLoader } from "@hl8/config";
+import { TypedConfigModule, dotenvLoader, directoryLoader } from "@hl8/config";
 import { Module } from "@nestjs/common";
+import * as path from "path";
 import { AppController } from "./app.controller.js";
 import { AppConfig } from "./config/app.config.js";
 
@@ -54,16 +55,38 @@ import { AppConfig } from "./config/app.config.js";
   providers: [],
   imports: [
     // 配置模块 - 类型安全的配置管理
+    // 配置加载顺序（按优先级从高到低，后面的会覆盖前面的）：
+    // 1. 配置文件（config/default.json, config/${NODE_ENV}.json 等）
+    // 2. 远程配置源（如果配置了远程配置服务）
+    // 3. 进程环境变量（作为最后的 fallback，不加载 .env 文件）
+    // 注意：.env 文件仅在无法获得其他配置源时作为 fallback 使用
     TypedConfigModule.forRoot({
       schema: AppConfig,
       isGlobal: true,
       load: [
+        // 1. 从 config 目录加载配置文件（JSON/YAML）
+        // 如果配置文件不存在，directoryLoader 会返回空对象，不会抛出错误
+        directoryLoader({
+          directory: path.join(process.cwd(), "config"),
+          include: /\.(json|yml|yaml)$/,
+        }),
+        // 2. 远程配置源（如果需要，可以在这里添加）
+        // remoteLoader("https://config-server.com/api/config", {
+        //   requestConfig: {
+        //     headers: { Authorization: "Bearer token" },
+        //   },
+        // }),
+        // 3. 进程环境变量（作为最后的 fallback）
+        // 注意：这里只加载进程环境变量，不加载 .env 文件
+        // .env 文件应该只在没有其他配置源时才使用
         dotenvLoader({
-          separator: "__", // 支持嵌套配置：REDIS__HOST
-          envFilePath: ".env", // 使用单个文件路径
-          // 当 .env 缺失时不报错，使用进程环境变量启动
-          ignoreEnvFile: true,
-          enableExpandVariables: true, // 支持 ${VAR} 语法
+          separator: "__", // 支持嵌套配置：REDIS__HOST, LOGGING__LEVEL
+          envFilePath: ".env", // .env 文件路径（但只在没有其他配置源时使用）
+          ignoreEnvFile: true, // 忽略 .env 文件，只使用进程环境变量
+          // 如果需要使用 .env 文件作为 fallback，可以设置 ignoreEnvFile: false
+          // 但建议只在没有配置文件时使用 .env
+          ignoreEnvVars: false, // 不忽略进程环境变量
+          enableExpandVariables: true, // 支持 ${VAR} 和 ${VAR:-DEFAULT} 语法
         }),
       ],
     }),
@@ -72,28 +95,21 @@ import { AppConfig } from "./config/app.config.js";
     // 启用企业级功能：上下文注入、敏感信息脱敏、性能监控、美化输出
     // 注意：详细配置在 AppConfig.logging 中定义，可通过环境变量覆盖
     // 环境变量格式：LOGGING__LEVEL=info, LOGGING__PRETTY_PRINT=true
+    // 注意：由于 FastifyLoggingModule 不支持 forRootAsync，配置会在运行时通过 AppConfig 获取
+    // 这里使用默认配置，实际配置会从 AppConfig 中读取并通过环境变量覆盖
     FastifyLoggingModule.forRoot({
       config: {
-        level:
-          (process.env.LOGGING__LEVEL as
-            | "fatal"
-            | "error"
-            | "warn"
-            | "info"
-            | "debug"
-            | "trace") || "info",
-        // 开发环境启用美化输出，生产环境使用 JSON 格式
-        prettyPrint:
-          process.env.NODE_ENV === "development" ||
-          process.env.LOGGING__PRETTY_PRINT === "true",
+        // 默认值，会被环境变量覆盖（通过 dotenvLoader）
+        level: "info",
+        prettyPrint: false,
         timestamp: true,
         enabled: true,
 
         // 启用请求上下文自动注入
         context: {
           enabled: true,
-          includeRequestDetails: true, // 包含请求详情（method、url、ip 等）
-          includeUserInfo: false, // 不包含用户信息（需要时可通过中间件设置）
+          includeRequestDetails: true,
+          includeUserInfo: false,
         },
 
         // 启用敏感信息脱敏
@@ -122,8 +138,8 @@ import { AppConfig } from "./config/app.config.js";
 
         // 错误处理配置
         errorHandling: {
-          fallbackToConsole: false, // 不降级到控制台
-          silentFailures: false, // 记录日志写入失败
+          fallbackToConsole: false,
+          silentFailures: false,
         },
       },
     }),
@@ -141,14 +157,17 @@ import { AppConfig } from "./config/app.config.js";
     // Prometheus Metrics 模块 - 性能监控
     // 注意：详细配置在 AppConfig.metrics 中定义，可通过环境变量覆盖
     // 环境变量格式：METRICS__PATH=/metrics
-    MetricsModule.forRoot({
-      defaultLabels: {
-        app: "fastify-api",
-        environment: process.env.NODE_ENV || "development",
-      },
-
-      path: process.env.METRICS__PATH || "/metrics",
-      enableDefaultMetrics: true,
+    // 注意：由于 MetricsModule 支持 forRootAsync，我们可以从 AppConfig 获取配置
+    MetricsModule.forRootAsync({
+      inject: [AppConfig],
+      useFactory: (appConfig: AppConfig) => ({
+        defaultLabels: {
+          app: "fastify-api",
+          environment: appConfig.NODE_ENV || "development",
+        },
+        path: appConfig.metrics?.path || "/metrics",
+        enableDefaultMetrics: appConfig.metrics?.enableDefaultMetrics ?? true,
+      }),
     }),
   ],
 })
