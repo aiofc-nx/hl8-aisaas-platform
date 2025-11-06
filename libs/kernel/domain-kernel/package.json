@@ -1,13 +1,12 @@
 {
-  "name": "@hl8/shared",
+  "name": "@hl8/domain-kernel",
   "version": "1.0.0",
-  "description": "共享模块",
+  "description": "领域内核模块",
   "keywords": [
-    "shared",
+    "domain-kernel",
     "utils",
     "helpers",
-    "common",
-    "shared-module"
+    "common"
   ],
   "type": "module",
   "exports": {

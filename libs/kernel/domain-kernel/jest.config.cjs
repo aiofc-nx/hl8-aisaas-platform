@@ -1,5 +1,5 @@
 module.exports = {
-  displayName: "@hl8/shared",
+  displayName: "@hl8/domain-kernel",
   preset: "ts-jest/presets/default-esm",
   testEnvironment: "node",
   extensionsToTreatAsEsm: [".ts"],
